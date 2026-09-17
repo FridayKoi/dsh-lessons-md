@@ -11,6 +11,17 @@
 - 🔍 实时搜索：按标题、场景、错误/正确做法、来源全文过滤
 - 📊 顶部统计：条目总数、禁令/建议分布
 - 📂 读当前会话所在工作区的 `LESSONS.md`，遵循 DSH 工作区模型
+- 🤖 **Agent 工具**：注册三个模型可调用的工具，让 DSH 的 AI 自己维护错题本
+
+### Agent 工具
+
+| 工具 | 作用 |
+|------|------|
+| `notebook_read` | 读取当前工作区错题本全文（AI 开工前调用可以避开项目已知的坑） |
+| `notebook_write` | 追加一条新错题（标题/场景/错误做法/正确做法/来源/等级） |
+| `notebook_hit` | 给某条错题标记复发：计数 +1 并追加日期，**满 3 次自动升级为 🔴 禁令** |
+
+三者配合形成闭环：AI 被纠正 → `notebook_write` 记录 → 下次开工 `notebook_read` 回避 → 再犯 `notebook_hit` 计数 → 累犯自动升级禁令。用户在侧边栏面板里随时看到全貌。
 
 ## 安装（规划中）
 
@@ -53,8 +64,9 @@ src/client.js  Client 入口：手写的惰性 CJS bundle（ModuleLoader 契约�
 
 ## Roadmap
 
-- [ ] v0.2：界面上编辑条目、手动升降级（Host 侧加文件写入）
-- [ ] v0.3：注册 Agent 工具，让 DSH 的 AI 会话内直接读写错题本（与 `/retro` 工作流打通）
+- [x] v0.1：只读面板（分级渲染 / 搜索 / 统计）
+- [x] v0.2：Agent 工具（notebook_read / notebook_write / notebook_hit，含自动升级）
+- [ ] v0.3：面板上直接编辑条目（需打通 Host↔Client 自有数据通道）
 - [ ] npm 发布 + 截图 + 英文 README
 
 ## License
