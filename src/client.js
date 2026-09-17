@@ -39,6 +39,21 @@ window.__ModuleLoader__.load({
         readError: '读取失败：',
         noMatch: '没有匹配「{query}」的条目。',
         filterAll: '全部',
+        add: '添加',
+        edit: '编辑',
+        del: '删除',
+        confirmDel: '确认删除？',
+        formAddTitle: '添加错题',
+        formEditTitle: '编辑错题',
+        fTitle: '标题',
+        fLevel: '等级',
+        fScene: '场景',
+        fBad: '错误做法',
+        fGood: '正确做法',
+        fSource: '来源',
+        save: '保存',
+        cancel: '取消',
+        needSession: '需要先打开一个会话才能操作错题本。',
       },
       en: {
         title: 'Mistake Notebook',
@@ -48,6 +63,21 @@ window.__ModuleLoader__.load({
         levelBan: 'Ban',
         levelAdvice: 'Advice',
         filterAll: 'All',
+        add: 'Add',
+        edit: 'Edit',
+        del: 'Delete',
+        confirmDel: 'Confirm delete?',
+        formAddTitle: 'Add entry',
+        formEditTitle: 'Edit entry',
+        fTitle: 'Title',
+        fLevel: 'Level',
+        fScene: 'Scene',
+        fBad: 'What went wrong',
+        fGood: 'Do instead',
+        fSource: 'Source',
+        save: 'Save',
+        cancel: 'Cancel',
+        needSession: 'Open a session first to manage the notebook.',
         recurred: '{count} times ({dates})',
         sceneLabel: 'Scene',
         badLabel: 'What went wrong',
@@ -167,6 +197,19 @@ window.__ModuleLoader__.load({
       fchipOn: { opacity: 1, fontWeight: 600, background: 'rgba(127,127,127,0.15)' },
       fchipBanOn: { background: 'rgba(229,72,77,0.16)', color: '#ff6369', borderColor: 'rgba(229,72,77,0.4)' },
       fchipAdviceOn: { background: 'rgba(245,166,35,0.16)', color: '#e2a336', borderColor: 'rgba(245,166,35,0.4)' },
+      actBtn: { fontSize: '11px', padding: '2px 9px', borderRadius: '6px', border: '1px solid rgba(127,127,127,0.3)', background: 'transparent', color: 'inherit', cursor: 'pointer', opacity: 0.7, flexShrink: 0 },
+      actDanger: { borderColor: 'rgba(229,72,77,0.5)', color: '#ff6369', opacity: 1 },
+      cardActions: { display: 'flex', justifyContent: 'flex-end', gap: '6px' },
+      overlay: { position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, background: 'rgba(0,0,0,0.55)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      modal: { background: 'Canvas', color: 'CanvasText', borderRadius: '12px', padding: '16px', width: 'min(560px, 92vw)', maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid rgba(127,127,127,0.25)', boxSizing: 'border-box' },
+      modalTitle: { fontSize: '14px', fontWeight: 700 },
+      formRow: { display: 'flex', flexDirection: 'column', gap: '4px' },
+      formLabel: { fontSize: '11.5px', opacity: 0.6 },
+      formInput: { width: '100%', padding: '6px 9px', borderRadius: '6px', border: '1px solid rgba(127,127,127,0.35)', background: 'transparent', color: 'inherit', boxSizing: 'border-box', fontSize: '12.5px', fontFamily: 'inherit', resize: 'vertical' },
+      levelToggle: { display: 'flex', gap: '8px' },
+      formBtns: { display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' },
+      primaryBtn: { padding: '5px 16px', borderRadius: '6px', border: 'none', background: 'rgba(127,127,127,0.28)', color: 'inherit', cursor: 'pointer', fontWeight: 600, fontSize: '12.5px' },
+      formErr: { fontSize: '12px', color: '#ff6369' },
       glyphBlock: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', width: 'max-content', maxWidth: '150px', overflow: 'hidden' },
       glyphLine1: { fontSize: '14px', fontWeight: 500, lineHeight: '20px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
       glyphLine2: { fontSize: '11px', lineHeight: '14px', opacity: 0.6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' },
@@ -205,6 +248,9 @@ window.__ModuleLoader__.load({
         ? h('span', { style: Object.assign({}, S.chip, S.chipBan) }, '🔴 ' + t('levelBan'))
         : h('span', { style: Object.assign({}, S.chip, S.chipAdvice) }, '🟡 ' + t('levelAdvice'));
       var recurText = e.recur ? e.recur.replace(/^(\d+)\s*次（([^）]*)）$/, function (_, c, d) { return t('recurred', { count: c, dates: d }); }) : null;
+      var delBtn = props.deleting
+        ? h('button', { style: Object.assign({}, S.actBtn, S.actDanger), onClick: props.onConfirmDelete }, t('confirmDel'))
+        : h('button', { style: S.actBtn, onClick: props.onDelete }, t('del'));
       return h('div', { style: Object.assign({}, S.card, S[lv === 'ban' ? 'cardBan' : 'cardAdvice']) },
         h('div', { style: S.cardHead },
           h('span', { style: S.cardId }, e.id),
@@ -221,7 +267,72 @@ window.__ModuleLoader__.load({
           h('span', { style: Object.assign({}, S.fixMark, S.fixGoodMark) }, '✓'),
           h('span', { style: { opacity: 0.5, flexShrink: 0 } }, t('goodLabel')),
           h('span', null, e.good)) : null,
-        e.source ? h('div', { style: S.source }, t('sourceLabel') + ' · ' + e.source) : null);
+        e.source ? h('div', { style: S.source }, t('sourceLabel') + ' · ' + e.source) : null,
+        h('div', { style: S.cardActions },
+          h('button', { style: S.actBtn, onClick: props.onEdit }, t('edit')),
+          delBtn));
+    }
+
+    // 添加/编辑表单弹层：mode 'add' | 'edit'；entry 为编辑目标。
+    function EntryForm(props) {
+      var t = props.t;
+      var editing = props.mode === 'edit';
+      var init = editing ? {
+        title: props.entry.title || '',
+        level: levelOf(props.entry),
+        scene: props.entry.scene || '',
+        bad: props.entry.bad || '',
+        good: props.entry.good || '',
+        source: props.entry.source || '',
+      } : { title: '', level: 'advice', scene: '', bad: '', good: '', source: '' };
+      var fields = React.useState(init);
+      var f = fields[0], setF = fields[1];
+
+      function set(key, value) { setF(function (prev) { return Object.assign({}, prev, (function () { var o = {}; o[key] = value; return o; })()); }); }
+
+      function submit() {
+        props.onSubmit(f);
+      }
+
+      var input = function (key, extra) { return h('input', Object.assign({
+        style: S.formInput,
+        value: f[key],
+        onChange: function (ev) { set(key, ev.target.value); },
+      }, extra || {})); };
+      var textarea = function (key, rows) { return h('textarea', {
+        style: S.formInput,
+        rows: rows || 2,
+        value: f[key],
+        onChange: function (ev) { set(key, ev.target.value); },
+      }); };
+
+      return h('div', { style: S.overlay, onClick: props.onCancel },
+        h('div', { style: S.modal, onClick: function (ev) { ev.stopPropagation(); } },
+          h('div', { style: S.modalTitle }, (editing ? t('formEditTitle') : t('formAddTitle')) + (editing ? ' · ' + props.entry.id : '')),
+          h('div', { style: S.formRow },
+            h('span', { style: S.formLabel }, t('fTitle') + ' *'),
+            input('title')),
+          h('div', { style: S.formRow },
+            h('span', { style: S.formLabel }, t('fLevel')),
+            h('div', { style: S.levelToggle },
+              h('button', { style: Object.assign({}, S.fchip, f.level === 'advice' ? S.fchipAdviceOn : {}), onClick: function () { set('level', 'advice'); } }, '🟡 ' + t('levelAdvice')),
+              h('button', { style: Object.assign({}, S.fchip, f.level === 'ban' ? S.fchipBanOn : {}), onClick: function () { set('level', 'ban'); } }, '🔴 ' + t('levelBan')))),
+          h('div', { style: S.formRow },
+            h('span', { style: S.formLabel }, t('fScene')),
+            textarea('scene')),
+          h('div', { style: S.formRow },
+            h('span', { style: S.formLabel }, '✗ ' + t('fBad')),
+            textarea('bad', 2)),
+          h('div', { style: S.formRow },
+            h('span', { style: S.formLabel }, '✓ ' + t('fGood')),
+            textarea('good', 2)),
+          h('div', { style: S.formRow },
+            h('span', { style: S.formLabel }, t('fSource')),
+            input('source')),
+          props.err ? h('div', { style: S.formErr }, props.err) : null,
+          h('div', { style: S.formBtns },
+            h('button', { style: S.actBtn, onClick: props.onCancel }, t('cancel')),
+            h('button', { style: S.primaryBtn, onClick: submit }, t('save')))));
     }
 
     function Panel(ctx, t) {
@@ -234,6 +345,48 @@ window.__ModuleLoader__.load({
         var tick = tickState[0], setTick = tickState[1];
         var filterState = React.useState('all');
         var filter = filterState[0], setFilter = filterState[1];
+        var formState = React.useState(null);
+        var form = formState[0], setForm = formState[1];
+        var deletingState = React.useState(null);
+        var deleting = deletingState[0], setDeleting = deletingState[1];
+        var formErrState = React.useState('');
+        var formErr = formErrState[0], setFormErr = formErrState[1];
+
+        // 通过 commands 通道触发 Host 端命令（不经模型）
+        function runCommand(line) {
+          var current = null;
+          try {
+            var list = ctx.sessions && ctx.sessions.list;
+            current = list ? list.getSnapshot().current : null;
+          } catch (e) {}
+          if (!current) return Promise.resolve({ ok: false, error: { message: t('needSession') } });
+          return ctx.remote.commands.execute(current, line, []).then(function (res) {
+            if (res && res.ok && res.value && res.value.result && res.value.result.kind === 'error') {
+              return { ok: false, error: { message: res.value.result.text } };
+            }
+            return res;
+          }, function (err) {
+            return { ok: false, error: { message: String(err) } };
+          });
+        }
+        function afterChange() { setTick(function (x) { return x + 1; }); }
+
+        function submitForm(f) {
+          if (!f.title.trim()) { setFormErr(t('fTitle')); return; }
+          var payload = { title: f.title.trim(), level: f.level, scene: f.scene, bad: f.bad, good: f.good, source: f.source };
+          var line = form.mode === 'edit'
+            ? '/lessons-edit ' + JSON.stringify(Object.assign({ id: form.entry.id }, payload))
+            : '/lessons-add ' + JSON.stringify(payload);
+          runCommand(line).then(function (res) {
+            if (res && res.ok) {
+              setFormErr('');
+              setForm(null);
+              afterChange();
+            } else {
+              setFormErr(res && res.error ? res.error.message : 'unknown');
+            }
+          });
+        }
 
         React.useEffect(function () {
           var alive = true;
@@ -312,25 +465,49 @@ window.__ModuleLoader__.load({
             fchip('advice', '🟡 ' + t('levelAdvice') + ' ' + counts.advice, S.fchipAdviceOn));
           body = filtered.length
             ? h('div', { style: S.list },
-                filtered.map(function (e) { return h(EntryCard, { key: e.id, entry: e, t: t }); }))
+                filtered.map(function (e) {
+                  return h(EntryCard, {
+                    key: e.id, entry: e, t: t,
+                    onEdit: function () { setForm({ mode: 'edit', entry: e }); },
+                    onDelete: function () { setDeleting(e.id); },
+                    onConfirmDelete: function () {
+                      runCommand('/lessons-remove ' + e.id).then(function (res) {
+                        setDeleting(null);
+                        if (res && res.ok) afterChange();
+                      });
+                    },
+                    deleting: deleting === e.id,
+                  });
+                }))
             : h('div', { style: S.empty }, t('noMatch', { query: query || t('filterAll') }));
           body = [filterRow, body];
         }
 
         var ws = workspaceName(ctx);
-        return h('div', { style: S.wrap },
+        var view = h('div', { style: S.wrap },
           h('div', { style: S.header },
             h('span', { style: S.titleRow },
               h('span', { style: S.title }, '📓 ' + t('title')),
               ws ? h('span', { style: S.sub }, '（' + ws + '）') : null),
-            h('button', { style: S.refresh, onClick: function () { setTick(function (x) { return x + 1; }); } }, t('refresh'))),
+            h('span', { style: { display: 'flex', gap: '8px', flexShrink: 0 } },
+              h('button', { style: S.actBtn, onClick: function () { setForm({ mode: 'add' }); } }, '＋ ' + t('add')),
+              h('button', { style: S.refresh, onClick: function () { setTick(function (x) { return x + 1; }); } }, t('refresh')))),
           h('input', { style: S.search, placeholder: t('search'), value: query, onChange: function (ev) { setQuery(ev.target.value); } }),
           body);
+        return h('div', null, view, form ? h(EntryForm, {
+          key: (form.mode === 'edit' ? form.entry.id : 'add'),
+          mode: form.mode,
+          entry: form.entry || null,
+          t: t,
+          err: formErr,
+          onCancel: function () { setForm(null); },
+          onSubmit: submitForm,
+        }) : null);
       };
     }
 
     // ---------- 插件入口 ----------
-    exports.inject = ['slots', 'sessions', 'remote', 'remote.workspaceFiles', 'locale'];
+    exports.inject = ['slots', 'sessions', 'remote', 'remote.workspaceFiles', 'remote.commands', 'locale'];
 
     exports.apply = function apply(ctx) {
       // 注册词典并绑定翻译函数（随 DSH 设置里的语言切换自动生效）

@@ -1,8 +1,7 @@
-// Host 入口：错题本的 Agent 工具集。
-// 注册三个模型可调用的工具，让 DSH 的 AI 能在会话里直接读写当前工作区的 LESSONS.md：
-//   notebook_read  —— 读取错题本全文（模型可见）
-//   notebook_write —— 追加一条新错题
-//   notebook_hit   —— 某条错题复发 +1（满 3 次自动升级为 🔴 禁令）
+// Host 入口：错题本的 Agent 工具 + 面板编辑命令。
+// 工具（notebook_read/write/hit）：模型可调用，AI 在会话里维护错题本。
+// 命令（/lessons-add/edit/remove）：面板按钮通过 commands 通道直接触发，
+// 不经模型，由 Host 端改写当前工作区的 LESSONS.md。
 // 浏览器面板（src/client.js）负责可视化；本文件负责数据读写。
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
@@ -10,7 +9,7 @@ import { join } from 'node:path'
 
 export const name = 'mistake-notebook'
 
-export const inject = ['tools']
+export const inject = ['tools', 'commands']
 
 // ---------- 基础工具函数 ----------
 
@@ -78,6 +77,55 @@ function updateStats(text) {
   return dated.replace(/- 最近更新：.{0,10}/, `- 最近更新：${new Date().toISOString().slice(0, 10)}\n`)
 }
 
+// ---------- 条目编辑（命令通道共用）----------
+
+const LEVEL_LINE = { advice: '- 等级: 🟡 建议', ban: '- 等级: 🔴 禁令' }
+
+function setLine(body, label, value) {
+  const line = `- ${label}: ${value}`
+  const re = new RegExp(`-\\s*${label}\\s*[：:].*`)
+  if (re.test(body)) return body.replace(re, () => line)
+  // 缺行则插到标题行之后
+  return body.replace(/^(##\s*\[E-\d+\][^\n]*\n)/m, (m0) => m0 + line + '\n')
+}
+
+function applyEdit(body, payload) {
+  let out = body
+  if (payload.title) out = out.replace(/^##\s*(\[E-\d+\])[^\n]*/m, (_m, id) => `## ${id} ${payload.title}`)
+  if (payload.scene !== undefined) out = setLine(out, '触发场景', payload.scene)
+  if (payload.bad !== undefined) out = setLine(out, '❌ 错误做法', payload.bad)
+  if (payload.good !== undefined) out = setLine(out, '✅ 正确做法', payload.good)
+  if (payload.source !== undefined) out = setLine(out, '来源', payload.source)
+  if (payload.level !== undefined) out = setLine(out, '等级', LEVEL_LINE[payload.level] ? LEVEL_LINE[payload.level].replace('- 等级: ', '') : payload.level)
+  return out
+}
+
+function parseCommandPayload(rawInput) {
+  const payload = JSON.parse(rawInput)
+  if (!payload || typeof payload !== 'object') throw new Error('需要 JSON 对象参数')
+  return payload
+}
+
+function addEntry(cwd, args) {
+  const file = join(cwd, 'LESSONS.md')
+  const text = existsSync(file) ? readFileSync(file, 'utf8') : SKELETON
+  const id = nextId(text)
+  const level = args.level === 'ban' ? '🔴 禁令' : '🟡 建议'
+  const entry = [
+    '',
+    `## [${id}] ${args.title}`,
+    args.scene ? `- 触发场景: ${args.scene}` : null,
+    args.bad ? `- ❌ 错误做法: ${args.bad}` : null,
+    args.good ? `- ✅ 正确做法: ${args.good}` : null,
+    `- 复发: 1 次（${today()}）`,
+    `- 等级: ${level}`,
+    `- 来源: ${new Date().toISOString().slice(0, 10)}${args.source ? '，' + args.source : ''}`,
+    '',
+  ].filter((line) => line !== null).join('\n')
+  writeFileSync(file, updateStats(text.replace(/\s*$/, '\n') + entry))
+  return `已记录错题 [${id}] ${args.title}（${level}）到 ${file}`
+}
+
 // ---------- 工具注册 ----------
 
 export function apply(ctx) {
@@ -112,23 +160,8 @@ export function apply(ctx) {
       render: (_args, value) => [{ type: 'text', text: value }],
     },
     async execute(args, exec) {
-      const { file, text } = readNotebook(exec)
-      const base = text === null ? SKELETON : text
-      const id = nextId(base)
-      const level = args.level === 'ban' ? '🔴 禁令' : '🟡 建议'
-      const entry = [
-        '',
-        `## [${id}] ${args.title}`,
-        args.scene ? `- 触发场景: ${args.scene}` : null,
-        args.bad ? `- ❌ 错误做法: ${args.bad}` : null,
-        args.good ? `- ✅ 正确做法: ${args.good}` : null,
-        `- 复发: 1 次（${today()}）`,
-        `- 等级: ${level}`,
-        `- 来源: ${new Date().toISOString().slice(0, 10)}${args.source ? '，' + args.source : ''}`,
-        '',
-      ].filter((line) => line !== null).join('\n')
-      writeFileSync(file, updateStats(base.replace(/\s*$/, '\n') + entry))
-      return `已记录错题 [${id}] ${args.title}（${level}）到 ${file}`
+      const cwd = exec?.agent?.session?.header?.cwd || process.cwd()
+      return addEntry(cwd, args)
     },
   }))
 
@@ -159,4 +192,70 @@ export function apply(ctx) {
   }))
 
   console.log('[mistake-notebook] tools registered: notebook_read, notebook_write, notebook_hit')
+
+  // ---------- 面板编辑命令（client 通过 commands remote 直接触发，不经模型）----------
+  function commandError(action) {
+    return (e) => ({ kind: 'error', text: `lessons-${action} 失败: ${String(e && e.message || e)}` })
+  }
+
+  ctx.commands.register({
+    name: 'lessons-add',
+    description: 'mistake-notebook: 向当前工作区错题本添加一条错题（面板按钮调用）',
+    input: { hint: '<json>' },
+    handler: ({ agent, rawInput }) => {
+      try {
+        const payload = parseCommandPayload(rawInput)
+        if (!payload.title) return { kind: 'error', text: 'lessons-add: 缺少 title 字段' }
+        const cwd = agent?.session?.header?.cwd || process.cwd()
+        return { kind: 'success', text: addEntry(cwd, payload) }
+      } catch (e) { return commandError('add')(e) }
+    },
+  })
+
+  ctx.commands.register({
+    name: 'lessons-edit',
+    description: 'mistake-notebook: 编辑当前工作区错题本的一条错题（面板按钮调用）',
+    input: { hint: '<json>' },
+    handler: ({ agent, rawInput }) => {
+      try {
+        const payload = parseCommandPayload(rawInput)
+        if (!payload.id) return { kind: 'error', text: 'lessons-edit: 缺少 id 字段' }
+        const cwd = agent?.session?.header?.cwd || process.cwd()
+        const file = join(cwd, 'LESSONS.md')
+        if (!existsSync(file)) return { kind: 'error', text: `当前工作区没有错题本（${file}）` }
+        const text = readFileSync(file, 'utf8')
+        const blocks = splitEntryBlocks(text)
+        const target = String(payload.id).toUpperCase()
+        const hit = blocks.find((b) => b.body.includes(`[${target}]`))
+        if (!hit) return { kind: 'error', text: `错题本里没有找到编号 ${target}` }
+        const updated = applyEdit(hit.body, payload)
+        writeFileSync(file, updateStats(text.slice(0, hit.start) + updated + text.slice(hit.end)))
+        return { kind: 'success', text: `已更新错题 ${target}` }
+      } catch (e) { return commandError('edit')(e) }
+    },
+  })
+
+  ctx.commands.register({
+    name: 'lessons-remove',
+    description: 'mistake-notebook: 从当前工作区错题本删除一条错题（面板按钮调用）',
+    input: { hint: '<id>' },
+    handler: ({ agent, rawInput }) => {
+      try {
+        const target = String(rawInput || '').trim().toUpperCase()
+        if (!target) return { kind: 'error', text: 'lessons-remove: 缺少条目编号，如 E-001' }
+        const cwd = agent?.session?.header?.cwd || process.cwd()
+        const file = join(cwd, 'LESSONS.md')
+        if (!existsSync(file)) return { kind: 'error', text: `当前工作区没有错题本（${file}）` }
+        const text = readFileSync(file, 'utf8')
+        const blocks = splitEntryBlocks(text)
+        const hit = blocks.find((b) => b.body.includes(`[${target}]`))
+        if (!hit) return { kind: 'error', text: `错题本里没有找到编号 ${target}` }
+        const next = (text.slice(0, hit.start) + text.slice(hit.end)).replace(/^\n+/, '\n')
+        writeFileSync(file, updateStats(next))
+        return { kind: 'success', text: `已删除错题 ${target}` }
+      } catch (e) { return commandError('remove')(e) }
+    },
+  })
+
+  console.log('[mistake-notebook] commands registered: /lessons-add, /lessons-edit, /lessons-remove')
 }
