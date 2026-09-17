@@ -25,8 +25,8 @@ function today() {
 
 const SKELETON = `# 项目错题本 / Mistake Notebook
 
-> 本文件由 mistake-notebook 插件维护：AI 会通过 notebook_write 记录新错题，
-> 通过 notebook_hit 给复发条目计数。人类可以直接编辑。
+> 本文件由 mistake-notebook 插件维护：AI 会通过 notebook_write 记录新错题（重复犯错用 notebook_hit 计数），
+> 人工可以直接编辑——人工编辑优先。条目格式约定见插件 README。
 
 ## 统计
 
@@ -52,12 +52,25 @@ function nextId(text) {
 
 function bumpRecurrence(body) {
   const m = body.match(/-\s*复发\s*[：:]\s*(\d+)\s*次（([^）]*)）/)
-  if (!m) return body.replace(/(-\s*等级\s*[：:])/, `- 复发: 1 次（${today()}）\n$1`)
+  let replaced
+  if (!m) {
+    replaced = body.replace(/(-\s*等级\s*[：:])/, `- 复发: 1 次（${today()}）\n$1`)
+    return { body: replaced, count: 1, dates: today(), upgraded: false }
+  }
   const count = parseInt(m[1], 10) + 1
   const dates = m[2].trim() ? `${m[2].trim()}, ${today()}` : today()
-  let replaced = body.replace(/-\s*复发\s*[：:].*/, `- 复发: ${count} 次（${dates}）`)
-  if (count >= 3) replaced = replaced.replace(/-\s*等级\s*[：:]\s*🟡\s*建议/, '- 等级: 🔴 禁令')
-  return replaced
+  replaced = body.replace(/-\s*复发\s*[：:].*/, `- 复发: ${count} 次（${dates}）`)
+  let upgraded = false
+  if (count >= 3) {
+    const wasAdvice = /-\s*等级\s*[：:]\s*🟡\s*建议/.test(replaced)
+    if (wasAdvice) {
+      replaced = replaced.replace(/-\s*等级\s*[：:]\s*🟡\s*建议/, '- 等级: 🔴 禁令')
+      // 按上游 skill 约定留痕：升级日期行
+      replaced = replaced.replace(/\s*$/, `\n- 升级: ${new Date().toISOString().slice(0, 10)} 第${count}次复发，升级为禁令\n`)
+      upgraded = true
+    }
+  }
+  return { body: replaced, count, dates, upgraded }
 }
 
 function splitEntryBlocks(text) {
@@ -96,6 +109,7 @@ function applyEdit(body, payload) {
   if (payload.bad !== undefined) out = setLine(out, '❌ 错误做法', payload.bad)
   if (payload.good !== undefined) out = setLine(out, '✅ 正确做法', payload.good)
   if (payload.source !== undefined) out = setLine(out, '来源', payload.source)
+  if (payload.related !== undefined) out = setLine(out, '同族', payload.related)
   if (payload.level !== undefined) out = setLine(out, '等级', LEVEL_LINE[payload.level] ? LEVEL_LINE[payload.level].replace('- 等级: ', '') : payload.level)
   return out
 }
@@ -117,13 +131,25 @@ function addEntry(cwd, args) {
     args.scene ? `- 触发场景: ${args.scene}` : null,
     args.bad ? `- ❌ 错误做法: ${args.bad}` : null,
     args.good ? `- ✅ 正确做法: ${args.good}` : null,
+    args.related ? `- 同族: ${args.related}` : null,
     `- 复发: 1 次（${today()}）`,
     `- 等级: ${level}`,
     `- 来源: ${new Date().toISOString().slice(0, 10)}${args.source ? '，' + args.source : ''}`,
     '',
   ].filter((line) => line !== null).join('\n')
-  writeFileSync(file, updateStats(text.replace(/\s*$/, '\n') + entry))
-  return `已记录错题 [${id}] ${args.title}（${level}）到 ${file}`
+  let next = text.replace(/\s*$/, '\n') + entry
+  // 同族双向互链：老条目回链新 ID
+  if (args.related) {
+    const rel = String(args.related).toUpperCase()
+    const blocks = splitEntryBlocks(next)
+    const hit = blocks.find((b) => b.body.includes(`[${rel}]`))
+    if (hit) {
+      const linked = hit.body.replace(/\s*$/, `\n- 同族: ${id}\n`)
+      next = next.slice(0, hit.start) + linked + next.slice(hit.end)
+    }
+  }
+  writeFileSync(file, updateStats(next))
+  return `已记录错题 [${id}] ${args.title}（${level}）到 ${file}` + (args.related ? `，已与 ${String(args.related).toUpperCase()} 互标同族` : '')
 }
 
 // ---------- 工具注册 ----------
@@ -146,7 +172,7 @@ export function apply(ctx) {
 
   ctx.tools.register(defineTool({
     name: 'notebook_write',
-    description: '向当前工作区错题本追加一条新错题。在用户纠正你的错误、或你反复重试后终于成功时调用，避免同一个坑踩第二次。',
+    description: '向当前工作区错题本追加一条新错题。调用前先 notebook_read 查重：若本次错误与已有条目实质相同（触发场景和错误做法一样），改用 notebook_hit 给已有条目计数；同根因但修法不同时才新建，并用 related 参数互标同族。在用户纠正你、或你反复重试后终于成功时调用。',
     parameters: {
       title: { type: 'string', required: true, description: '一句话说清这个错误（祈使句），如"禁止为编辑器启动独立进程"' },
       scene: { type: 'string', description: '触发场景：什么样的任务会踩这个坑' },
@@ -154,6 +180,7 @@ export function apply(ctx) {
       good: { type: 'string', description: '✅ 正确做法：下次应该怎么做' },
       source: { type: 'string', description: '来源背景：哪次会话/什么任务中发现' },
       level: { type: 'string', enum: ['advice', 'ban'], description: '等级：advice=建议（默认），ban=禁令' },
+      related: { type: 'string', description: '同族条目编号（如 E-002）：本次错误与它同根因但修法不同。会双向互标 - 同族 行' },
     },
     output: {
       schema: { type: 'string' },
@@ -182,12 +209,9 @@ export function apply(ctx) {
       const target = args.id.toUpperCase().replace(/^#*/, '')
       const hit = blocks.find((b) => b.body.includes(`[${target}]`))
       if (!hit) return `错题本里没有找到编号 ${target}。可用的编号：${(text.match(/\[E-\d+\]/g) || []).join(', ') || '（无）'}`
-      const updated = bumpRecurrence(hit.body)
-      const count = (updated.match(/-\s*复发\s*[：:]\s*(\d+)/) || [])[1]
-      const levelUp = count >= 3 && updated.includes('🔴 禁令') && !hit.body.includes('🔴 禁令')
-      const next = text.slice(0, hit.start) + updated + text.slice(hit.end)
-      writeFileSync(file, updateStats(next))
-      return `错题 ${target} 复发计数已 +1（现为 ${count} 次）${levelUp ? '，已自动升级为 🔴 禁令' : ''}。`
+      const bumped = bumpRecurrence(hit.body)
+      writeFileSync(file, updateStats(text.slice(0, hit.start) + bumped.body + text.slice(hit.end)))
+      return `错题 ${target} 复发计数已 +1（现为 ${bumped.count} 次）${bumped.upgraded ? '，已自动升级为 🔴 禁令并留痕' : ''}。`
     },
   }))
 

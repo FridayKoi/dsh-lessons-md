@@ -23,6 +23,43 @@
 
 三者配合形成闭环：AI 被纠正 → `notebook_write` 记录 → 下次开工 `notebook_read` 回避 → 再犯 `notebook_hit` 计数 → 累犯自动升级禁令。用户在侧边栏面板里随时看到全貌。
 
+## 与 AGENTS.md 接线（推荐组合）
+
+DSH 原生读取项目根目录的 `AGENTS.md`，**零配置**。最优用法是两者互补：
+
+- `AGENTS.md` 负责"让 AI 每次会话自动读错题本"（习惯层）
+- 本插件负责"可视化 + AI 工具 + 面板管理"（工具层）
+
+把下面的接线块贴进项目根目录的 `AGENTS.md` 即可：
+
+```markdown
+## Mistake Notebook（错题本）
+- 开始任何任务前，先看项目根目录是否存在 LESSONS.md：存在则通读全部条目，并回复一行"已读错题本（N 条）"作为确认（没有这行确认就视为没读）；不存在则跳过本节
+- 准备执行的操作与某条目的"触发场景"匹配时，先重读该条目再动手；🔴 禁令条目无例外，违反前必须停下说明
+- 会话结束或完成一个阶段性任务后，主动询问用户是否运行 /retro 复盘
+- 踩坑提炼一律写入项目根目录的 LESSONS.md（按其条目格式，含复发日期）；不要写入自动记忆等其他文件
+```
+
+> 完整的跨工具安装指南（三档模式：被动 / 半自动 / 全自动）见上游仓库 `docs/INSTALL.md`（占位：https://github.com/TODO-mistake-notebook-upstream）。
+
+## 条目格式约定
+
+本插件解析并显示 `LESSONS.md` 的以下字段：
+
+- **标题**：`## [E-XXX] 祈使句`（一行说清"该怎么做"）
+- **触发场景**：什么情况下应想起这条
+- **❌ 错误做法** / **✅ 正确做法**
+- **复发**: `N 次（MM-DD, ...）`——复发计数与日期留痕
+- **等级**：🟡 建议 / 🔴 禁令
+- **来源**：来自哪次任务/哪个工具
+
+两个进阶字段（面板同样解析显示）：
+
+- `- 同族: E-XXX`：同根因、不同修法的关联条目；命中一条时应把整族都读一遍
+- `- 升级: YYYY-MM-DD 第3次复发，升级为禁令`：自动升级的留痕记录
+
+**人工编辑优先**：面板上的删除/编辑操作就是人工编辑，被 AI 记录规则尊重——AI 不会把人工删掉的条目原样重建（若再犯确需重建，须注明"曾于某日人工删除"，该约定由上游 mistake-notebook skill 负责）。
+
 ## 安装（规划中）
 
 插件尚未发布到 npm，当前为本地开发状态。发布后将支持：
@@ -59,6 +96,7 @@ src/client.js  Client 入口：手写的惰性 CJS bundle（ModuleLoader 契约�
 ```
 
 - **只读解析**：按 mistake-notebook 条目格式解析 `## [E-XXX] 标题` 与 触发场景/❌/✅/复发/等级/来源 字段，解析失败时回退提示
+- **面板编辑**：通过 DSH 的 commands 机制（`/lessons-add` `/lessons-edit` `/lessons-remove`）由 Host 端直接写盘，不经模型
 - **无需自有 RPC**：静态插件不能新增 Remote 命名空间，v1 复用 DSH 内置的 `workspaceFiles.read`，因此天然零密钥、零模型调用
 - 已知兼容性：基于 DSH 0.1.5-rc.1 开发，插槽 API 属快速迭代期，升级 DSH 后需回归验证
 
@@ -66,8 +104,8 @@ src/client.js  Client 入口：手写的惰性 CJS bundle（ModuleLoader 契约�
 
 - [x] v0.1：只读面板（分级渲染 / 搜索 / 统计）
 - [x] v0.2：Agent 工具（notebook_read / notebook_write / notebook_hit，含自动升级）
-- [ ] v0.3：面板上直接编辑条目（需打通 Host↔Client 自有数据通道）
-- [ ] npm 发布 + 截图 + 英文 README
+- [x] v0.3：面板编辑（/lessons-add /lessons-edit /lessons-remove，Host 端直写）
+- [ ] npm 发布 + 截图 + 英文 README（其中 **npm 发布仍未完成**）
 
 ## License
 

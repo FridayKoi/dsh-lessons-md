@@ -54,6 +54,8 @@ window.__ModuleLoader__.load({
         save: '保存',
         cancel: '取消',
         needSession: '需要先打开一个会话才能操作错题本。',
+        familyHint: '同根因关联条目，点击查看',
+        familyLabel: '同族',
       },
       en: {
         title: 'Mistake Notebook',
@@ -78,6 +80,8 @@ window.__ModuleLoader__.load({
         save: 'Save',
         cancel: 'Cancel',
         needSession: 'Open a session first to manage the notebook.',
+        familyHint: 'Same root cause; click to view',
+        familyLabel: 'Related',
         recurred: '{count} times ({dates})',
         sceneLabel: 'Scene',
         badLabel: 'What went wrong',
@@ -127,8 +131,10 @@ window.__ModuleLoader__.load({
           scene: field(body, '触发场景'),
           bad: field(body, '❌\\s*错误做法'),
           good: field(body, '✅\\s*正确做法'),
+          related: field(body, '同族'),
           recur: field(body, '复发'),
           level: field(body, '等级'),
+          upgraded: field(body, '升级'),
           source: field(body, '来源'),
         });
       }
@@ -191,6 +197,8 @@ window.__ModuleLoader__.load({
       fixBadMark: { color: '#ff6369' },
       fixGoodMark: { color: '#46a758' },
       source: { fontSize: '11.5px', opacity: 0.5, wordBreak: 'break-word', borderTop: '1px dashed rgba(127,127,127,0.14)', paddingTop: '7px', marginTop: '1px' },
+      familyRow: { display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' },
+      familyChip: { fontSize: '11px', padding: '1px 8px', borderRadius: '999px', border: '1px solid rgba(127,127,127,0.3)', background: 'transparent', color: 'inherit', cursor: 'pointer', opacity: 0.75 },
       empty: { textAlign: 'center', marginTop: '48px', fontSize: '13px', opacity: 0.65, lineHeight: 1.8 },
       filterRow: { display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' },
       fchip: { fontSize: '12px', padding: '3px 12px', borderRadius: '999px', border: '1px solid rgba(127,127,127,0.3)', background: 'transparent', color: 'inherit', cursor: 'pointer', opacity: 0.75 },
@@ -267,7 +275,13 @@ window.__ModuleLoader__.load({
           h('span', { style: Object.assign({}, S.fixMark, S.fixGoodMark) }, '✓'),
           h('span', { style: { opacity: 0.5, flexShrink: 0 } }, t('goodLabel')),
           h('span', null, e.good)) : null,
-        e.source ? h('div', { style: S.source }, t('sourceLabel') + ' · ' + e.source) : null,
+        e.related ? h('div', { style: S.familyRow },
+          h('span', { style: { opacity: 0.5, flexShrink: 0, fontSize: '11px' } }, '⧉ 同族'),
+          String(e.related).split(/[,，\s]+/).filter(Boolean).map(function (rid) {
+            return h('button', { key: rid, style: S.familyChip, title: t('familyHint'), onClick: function () { props.onFind(rid.trim()); } }, '⧉ ' + rid.trim());
+          })) : null,
+        e.source ? h('div', { style: S.source }, t('sourceLabel') + ' · ' + e.source
+          + (e.upgraded ? ' · ⬆ ' + e.upgraded : '')) : null,
         h('div', { style: S.cardActions },
           h('button', { style: S.actBtn, onClick: props.onEdit }, t('edit')),
           delBtn));
@@ -283,8 +297,9 @@ window.__ModuleLoader__.load({
         scene: props.entry.scene || '',
         bad: props.entry.bad || '',
         good: props.entry.good || '',
+        related: props.entry.related || '',
         source: props.entry.source || '',
-      } : { title: '', level: 'advice', scene: '', bad: '', good: '', source: '' };
+      } : { title: '', level: 'advice', scene: '', bad: '', good: '', related: '', source: '' };
       var fields = React.useState(init);
       var f = fields[0], setF = fields[1];
 
@@ -326,6 +341,9 @@ window.__ModuleLoader__.load({
           h('div', { style: S.formRow },
             h('span', { style: S.formLabel }, '✓ ' + t('fGood')),
             textarea('good', 2)),
+          h('div', { style: S.formRow },
+            h('span', { style: S.formLabel }, '⧉ ' + t('familyLabel')),
+            input('related', { placeholder: props.mode === 'edit' && props.entry ? props.entry.id : 'E-002（可选，同根因关联条目）' })),
           h('div', { style: S.formRow },
             h('span', { style: S.formLabel }, t('fSource')),
             input('source')),
@@ -373,7 +391,7 @@ window.__ModuleLoader__.load({
 
         function submitForm(f) {
           if (!f.title.trim()) { setFormErr(t('fTitle')); return; }
-          var payload = { title: f.title.trim(), level: f.level, scene: f.scene, bad: f.bad, good: f.good, source: f.source };
+          var payload = { title: f.title.trim(), level: f.level, scene: f.scene, bad: f.bad, good: f.good, related: f.related.trim(), source: f.source };
           var line = form.mode === 'edit'
             ? '/lessons-edit ' + JSON.stringify(Object.assign({ id: form.entry.id }, payload))
             : '/lessons-add ' + JSON.stringify(payload);
@@ -449,7 +467,7 @@ window.__ModuleLoader__.load({
           var filtered = data.entries.filter(function (e) {
             if (filter !== 'all' && levelOf(e) !== filter) return false;
             if (!q) return true;
-            return [e.id, e.title, e.scene, e.bad, e.good, e.source]
+            return [e.id, e.title, e.scene, e.bad, e.good, e.related, e.source]
               .some(function (v) { return v && String(v).toLowerCase().indexOf(q) >= 0; });
           });
           var counts = { ban: 0, advice: 0 };
@@ -468,6 +486,7 @@ window.__ModuleLoader__.load({
                 filtered.map(function (e) {
                   return h(EntryCard, {
                     key: e.id, entry: e, t: t,
+                    onFind: function (rid) { setQuery(rid); setFilter('all'); },
                     onEdit: function () { setForm({ mode: 'edit', entry: e }); },
                     onDelete: function () { setDeleting(e.id); },
                     onConfirmDelete: function () {
