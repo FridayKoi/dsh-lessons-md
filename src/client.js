@@ -38,6 +38,7 @@ window.__ModuleLoader__.load({
         noEntries2: '条目格式：## [E-001] 标题',
         readError: '读取失败：',
         noMatch: '没有匹配「{query}」的条目。',
+        filterAll: '全部',
       },
       en: {
         title: 'Mistake Notebook',
@@ -46,6 +47,7 @@ window.__ModuleLoader__.load({
         stats: '{total} entries · 🔴 {ban} ban · 🟡 {advice} advice',
         levelBan: 'Ban',
         levelAdvice: 'Advice',
+        filterAll: 'All',
         recurred: '{count} times ({dates})',
         sceneLabel: 'Scene',
         badLabel: 'What went wrong',
@@ -138,28 +140,33 @@ window.__ModuleLoader__.load({
       refresh: { fontSize: '12px', padding: '3px 10px', borderRadius: '6px', border: '1px solid rgba(127,127,127,0.35)', background: 'transparent', cursor: 'pointer', flexShrink: 0 },
       search: { width: '100%', padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(127,127,127,0.35)', background: 'transparent', color: 'inherit', boxSizing: 'border-box', fontSize: '13px', flexShrink: 0 },
       stats: { fontSize: '12px', opacity: 0.65, flexShrink: 0 },
-      list: { display: 'flex', flexDirection: 'column', gap: '10px' },
-      card: { border: '1px solid rgba(127,127,127,0.18)', borderRadius: '10px', padding: '10px 12px', background: 'rgba(127,127,127,0.05)', display: 'flex', flexDirection: 'column', gap: '6px' },
+      list: { display: 'flex', flexDirection: 'column', gap: '12px' },
+      card: { border: '1px solid rgba(127,127,127,0.18)', borderRadius: '12px', padding: '12px 14px', background: 'rgba(127,127,127,0.05)', display: 'flex', flexDirection: 'column', gap: '8px' },
       cardBan: { borderColor: 'rgba(229,72,77,0.35)', borderLeft: '3px solid rgba(229,72,77,0.75)' },
       cardAdvice: { borderColor: 'rgba(245,166,35,0.30)', borderLeft: '3px solid rgba(245,166,35,0.65)' },
       cardHead: { display: 'flex', alignItems: 'center', gap: '8px', minWidth: '0' },
       cardId: { fontSize: '11px', opacity: 0.5, flexShrink: 0, fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace' },
-      cardTitle: { fontSize: '13.5px', fontWeight: 600, lineHeight: 1.4, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+      cardTitle: { fontSize: '14px', fontWeight: 600, lineHeight: 1.4, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
       headSpacer: { flex: 1 },
-      chip: { fontSize: '11px', borderRadius: '999px', padding: '1px 8px', flexShrink: 0 },
+      chip: { fontSize: '11px', borderRadius: '999px', padding: '1px 9px', flexShrink: 0 },
       chipBan: { background: 'rgba(229,72,77,0.15)', color: '#ff6369' },
       chipAdvice: { background: 'rgba(245,166,35,0.16)', color: '#e2a336' },
       recur: { fontSize: '11px', opacity: 0.55, flexShrink: 0, whiteSpace: 'nowrap' },
       scene: { fontSize: '12.5px', lineHeight: 1.55, opacity: 0.78, wordBreak: 'break-word' },
       rowLabel: { opacity: 0.5, marginRight: '6px', flexShrink: 0 },
-      fixRow: { display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12.5px', lineHeight: 1.55, borderRadius: '6px', padding: '6px 9px', wordBreak: 'break-word' },
+      fixRow: { display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12.5px', lineHeight: 1.6, borderRadius: '8px', padding: '7px 10px', wordBreak: 'break-word' },
       fixBad: { background: 'rgba(229,72,77,0.09)' },
       fixGood: { background: 'rgba(70,167,88,0.10)' },
       fixMark: { flexShrink: 0, fontWeight: 700 },
       fixBadMark: { color: '#ff6369' },
       fixGoodMark: { color: '#46a758' },
-      source: { fontSize: '11.5px', opacity: 0.5, wordBreak: 'break-word' },
+      source: { fontSize: '11.5px', opacity: 0.5, wordBreak: 'break-word', borderTop: '1px dashed rgba(127,127,127,0.14)', paddingTop: '7px', marginTop: '1px' },
       empty: { textAlign: 'center', marginTop: '48px', fontSize: '13px', opacity: 0.65, lineHeight: 1.8 },
+      filterRow: { display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' },
+      fchip: { fontSize: '12px', padding: '3px 12px', borderRadius: '999px', border: '1px solid rgba(127,127,127,0.3)', background: 'transparent', color: 'inherit', cursor: 'pointer', opacity: 0.75 },
+      fchipOn: { opacity: 1, fontWeight: 600, background: 'rgba(127,127,127,0.15)' },
+      fchipBanOn: { background: 'rgba(229,72,77,0.16)', color: '#ff6369', borderColor: 'rgba(229,72,77,0.4)' },
+      fchipAdviceOn: { background: 'rgba(245,166,35,0.16)', color: '#e2a336', borderColor: 'rgba(245,166,35,0.4)' },
       glyphBlock: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', width: 'max-content', maxWidth: '150px', overflow: 'hidden' },
       glyphLine1: { fontSize: '14px', fontWeight: 500, lineHeight: '20px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
       glyphLine2: { fontSize: '11px', lineHeight: '14px', opacity: 0.6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' },
@@ -225,6 +232,8 @@ window.__ModuleLoader__.load({
         var query = queryState[0], setQuery = queryState[1];
         var tickState = React.useState(0);
         var tick = tickState[0], setTick = tickState[1];
+        var filterState = React.useState('all');
+        var filter = filterState[0], setFilter = filterState[1];
 
         React.useEffect(function () {
           var alive = true;
@@ -284,22 +293,28 @@ window.__ModuleLoader__.load({
           body = h('div', { style: S.empty }, t('noEntries1'), h('br'), t('noEntries2'));
         } else {
           var q = query.trim().toLowerCase();
-          var filtered = q
-            ? data.entries.filter(function (e) {
-                return [e.id, e.title, e.scene, e.bad, e.good, e.source]
-                  .some(function (v) { return v && String(v).toLowerCase().indexOf(q) >= 0; });
-              })
-            : data.entries;
+          var filtered = data.entries.filter(function (e) {
+            if (filter !== 'all' && levelOf(e) !== filter) return false;
+            if (!q) return true;
+            return [e.id, e.title, e.scene, e.bad, e.good, e.source]
+              .some(function (v) { return v && String(v).toLowerCase().indexOf(q) >= 0; });
+          });
           var counts = { ban: 0, advice: 0 };
           data.entries.forEach(function (e) { counts[levelOf(e)] += 1; });
+          function fchip(key, label, onStyle) {
+            var active = filter === key;
+            var style = Object.assign({}, S.fchip, active ? Object.assign({ opacity: 1, fontWeight: 600 }, onStyle || S.fchipOn) : {});
+            return h('button', { key: key, style: style, onClick: function () { setFilter(key); } }, label);
+          }
+          var filterRow = h('div', { style: S.filterRow },
+            fchip('all', t('filterAll') + ' ' + data.entries.length),
+            fchip('ban', '🔴 ' + t('levelBan') + ' ' + counts.ban, S.fchipBanOn),
+            fchip('advice', '🟡 ' + t('levelAdvice') + ' ' + counts.advice, S.fchipAdviceOn));
           body = filtered.length
             ? h('div', { style: S.list },
                 filtered.map(function (e) { return h(EntryCard, { key: e.id, entry: e, t: t }); }))
-            : h('div', { style: S.empty }, t('noMatch', { query: query }));
-          body = [
-            h('div', { key: 'summary', style: S.stats }, t('stats', { total: data.entries.length, ban: counts.ban, advice: counts.advice })),
-            body,
-          ];
+            : h('div', { style: S.empty }, t('noMatch', { query: query || t('filterAll') }));
+          body = [filterRow, body];
         }
 
         var ws = workspaceName(ctx);
