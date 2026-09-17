@@ -1,0 +1,280 @@
+// Client 入口：DSH Web UI 的错题本侧边栏面板。
+// 产物格式对齐 dsh-client-modules 的惰性 CJS bundle 契约（参照 dsh-client-ui-message-feedback/lib/client.js）：
+// window.__ModuleLoader__.load({ id, factory(require) { ...; return module.exports } })
+// react / react/jsx-runtime 由平台冻结模块表提供，必须 external，不能打进来。
+window.__ModuleLoader__.load({
+  id: 'dsh-mistake-notebook',
+  factory: (require) => {
+    var module = { exports: {} };
+    var exports = module.exports;
+    Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+
+    var React = require('react');
+    var h = React.createElement;
+
+    var PANEL_ID = 'mistake-notebook';
+
+    // ---------- LESSONS.md 解析 ----------
+    // 条目格式（mistake-notebook 项目约定）：
+    // ## [E-001] 标题
+    // - 触发场景: ...
+    // - ❌ 错误做法: ...
+    // - ✅ 正确做法: ...
+    // - 复发: N 次（MM-DD, ...）
+    // - 等级: 🟡 建议 | 🔴 禁令
+    // - 来源: ...
+    function field(body, label) {
+      var re = new RegExp('-\\s*' + label + '\\s*[：:]\\s*(.+)');
+      var m = body.match(re);
+      return m ? m[1].trim() : null;
+    }
+
+    function parseLessons(text) {
+      var entries = [];
+      var re = /^##\s*\[([E-\d]+)\]\s*(.+)$/gm;
+      var marks = [];
+      var m;
+      while ((m = re.exec(text)) !== null) {
+        marks.push({ id: m[1], title: m[2].trim(), start: m.index });
+      }
+      for (var i = 0; i < marks.length; i++) {
+        var end = i + 1 < marks.length ? marks[i + 1].start : text.length;
+        var body = text.slice(marks[i].start, end);
+        entries.push({
+          id: marks[i].id,
+          title: marks[i].title,
+          scene: field(body, '触发场景'),
+          bad: field(body, '❌\\s*错误做法'),
+          good: field(body, '✅\\s*正确做法'),
+          recur: field(body, '复发'),
+          level: field(body, '等级'),
+          source: field(body, '来源'),
+        });
+      }
+      return entries;
+    }
+
+    function levelOf(entry) {
+      if (entry.level && entry.level.indexOf('禁令') >= 0) return 'ban';
+      return 'advice';
+    }
+
+    function decodeBase64Utf8(b64) {
+      var bin = atob(b64);
+      var bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new TextDecoder('utf-8').decode(bytes);
+    }
+
+    // ---------- 样式 ----------
+    var S = {
+      wrap: { display: 'flex', flexDirection: 'column', height: '100%', padding: '14px', gap: '10px', overflowY: 'auto', boxSizing: 'border-box' },
+      header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 },
+      title: { fontSize: '15px', fontWeight: 700 },
+      sub: { fontSize: '12px', opacity: 0.6 },
+      refresh: { fontSize: '12px', padding: '3px 10px', borderRadius: '6px', border: '1px solid rgba(127,127,127,0.35)', background: 'transparent', cursor: 'pointer' },
+      search: { width: '100%', padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(127,127,127,0.35)', background: 'transparent', color: 'inherit', boxSizing: 'border-box', fontSize: '13px', flexShrink: 0 },
+      card: { borderRadius: '10px', padding: '10px 12px', background: 'rgba(127,127,127,0.08)', borderLeft: '4px solid transparent' },
+      ban: { borderLeftColor: '#e5484d' },
+      advice: { borderLeftColor: '#f5a623' },
+      cardTitle: { fontSize: '13.5px', fontWeight: 600, marginBottom: '6px', lineHeight: 1.4 },
+      badge: { display: 'inline-block', fontSize: '11px', borderRadius: '999px', padding: '1px 8px', marginRight: '6px', verticalAlign: 'middle' },
+      badgeBan: { background: 'rgba(229,72,77,0.15)', color: '#e5484d' },
+      badgeAdvice: { background: 'rgba(245,166,35,0.18)', color: '#b47d07' },
+      row: { fontSize: '12.5px', lineHeight: 1.55, margin: '2px 0', wordBreak: 'break-word' },
+      rowLabel: { opacity: 0.55, marginRight: '4px' },
+      empty: { textAlign: 'center', marginTop: '48px', fontSize: '13px', opacity: 0.65, lineHeight: 1.8 },
+      icon: function (size, active) {
+        return { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.round(size * 0.72), opacity: active ? 1 : 0.9 };
+      },
+      glyphBlock: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', width: 'max-content', maxWidth: '150px', overflow: 'hidden' },
+      glyphLine1: { fontSize: '14px', fontWeight: 500, lineHeight: '20px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+      glyphLine2: { fontSize: '11px', lineHeight: '14px', opacity: 0.6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' },
+    };
+
+    // ---------- 工作区名称 ----------
+    // 从 sessions.list 快照的当前会话 cwd 取末段作为工作区文件夹名。
+    function workspaceName(ctx) {
+      try {
+        var s = ctx.sessions.list.getSnapshot();
+        var item = s.current && s.byId ? s.byId[s.current] : null;
+        var cwd = item && item.cwd;
+        if (!cwd) return null;
+        var parts = String(cwd).split(/[\\/]+/).filter(Boolean);
+        return parts.length ? parts[parts.length - 1] : null;
+      } catch (e) { return null; }
+    }
+
+    // ---------- 组件 ----------
+    // 侧边栏行：宽模式(size 18)下整个两行内容画在图标格里（外壳标题置空），
+    // 这样工作区名可以显示在"错题本"下方第二行；收起模式(size 16)只渲染图标。
+    function PanelIcon(ctx) {
+      return function PanelGlyph(props) {
+        // 外壳约定：侧边栏展开时 size=16（行内还有标题位），收起成窄轨时 size=18。
+        // 展开模式画两行内容（外壳标题已置空）；窄轨模式只渲染图标。
+        if (props.size > 16) {
+          return h('div', { style: S.icon(props.size, props.active), title: '错题本' }, '📓');
+        }
+        var ws = workspaceName(ctx);
+        return h('div', { style: S.glyphBlock, title: ws ? '错题本（' + ws + '）' : '错题本' },
+          h('div', { style: S.glyphLine1 }, '📓 错题本'),
+          ws ? h('div', { style: S.glyphLine2 }, '（' + ws + '）') : null);
+      };
+    }
+
+    function Field(props) {
+      if (!props.value) return null;
+      return h('div', { style: S.row },
+        h('span', { style: S.rowLabel }, props.label),
+        h('span', null, props.value));
+    }
+
+    function EntryCard(props) {
+      var e = props.entry;
+      var lv = levelOf(e);
+      var badge = lv === 'ban'
+        ? h('span', { style: Object.assign({}, S.badge, S.badgeBan) }, '🔴 禁令')
+        : h('span', { style: Object.assign({}, S.badge, S.badgeAdvice) }, '🟡 建议');
+      return h('div', { style: Object.assign({}, S.card, S[lv]) },
+        h('div', { style: S.cardTitle }, '[' + e.id + '] ' + e.title, ' ', badge,
+          e.recur ? h('span', { style: { fontSize: '11px', opacity: 0.7 } }, ' · ' + e.recur) : null),
+        h(Field, { label: '场景', value: e.scene }),
+        h(Field, { label: '❌', value: e.bad }),
+        h(Field, { label: '✅', value: e.good }),
+        e.source ? h(Field, { label: '来源', value: e.source }) : null);
+    }
+
+    function Panel(ctx) {
+      return function PanelInner(props) {
+        var state = React.useState({ status: 'loading', entries: [], detail: null, sessionId: null });
+        var data = state[0], setData = state[1];
+        var queryState = React.useState('');
+        var query = queryState[0], setQuery = queryState[1];
+        var tickState = React.useState(0);
+        var tick = tickState[0], setTick = tickState[1];
+
+        React.useEffect(function () {
+          var alive = true;
+          function load() {
+            var current = null;
+            try {
+              var list = ctx.sessions && ctx.sessions.list;
+              current = list ? list.getSnapshot().current : null;
+            } catch (e) { /* sessions 服务尚不可用 */ }
+            if (!current) {
+              if (alive) setData({ status: 'no-session', entries: [], detail: null, sessionId: null });
+              return;
+            }
+            var wf = ctx.remote && ctx.remote.workspaceFiles;
+            if (!wf) {
+              if (alive) setData({ status: 'read-error', entries: [], detail: 'remote.workspaceFiles 服务不可用', sessionId: current });
+              return;
+            }
+            wf.readAll(current, 'LESSONS.md').then(function (res) {
+              if (!alive) return;
+              if (res && res.ok) {
+                var text = decodeBase64Utf8(res.value.data);
+                var entries = parseLessons(text);
+                setData({ status: entries.length ? 'ok' : 'no-entries', entries: entries, detail: null, sessionId: current });
+              } else {
+                var code = res && res.error ? res.error.code : 'unknown';
+                var msg = res && res.error ? res.error.message : '';
+                setData({
+                  status: code === 'NOT_FOUND' || /not[-\s]?found|ENOENT|no such/i.test(String(msg) + code) ? 'no-file' : 'read-error',
+                  entries: [], detail: code + ' ' + msg, sessionId: current,
+                });
+              }
+            }).catch(function (err) {
+              if (alive) setData({ status: 'read-error', entries: [], detail: String(err), sessionId: current });
+            });
+          }
+          try { load(); } catch (e) {
+            if (alive) setData({ status: 'read-error', entries: [], detail: String(e), sessionId: null });
+          }
+          var unsubscribe = null;
+          try {
+            unsubscribe = ctx.sessions.list.subscribe(load);
+          } catch (e) { /* 订阅失败则仅手动刷新 */ }
+          return function () { alive = false; if (unsubscribe) unsubscribe(); };
+        }, [tick]);
+
+        var body;
+        if (data.status === 'loading') {
+          body = h('div', { style: S.empty }, '正在读取错题本…');
+        } else if (data.status === 'no-session') {
+          body = h('div', { style: S.empty }, '还没有打开的会话。', h('br'), '错题本按会话所在工作区读取 LESSONS.md。');
+        } else if (data.status === 'no-file') {
+          body = h('div', { style: S.empty }, '当前工作区没有找到 LESSONS.md。', h('br'), '把 mistake-notebook 的模板复制到项目根目录即可开始记账。');
+        } else if (data.status === 'read-error') {
+          body = h('div', { style: S.empty }, '读取失败：', h('br'), String(data.detail || ''));
+        } else if (data.status === 'no-entries') {
+          body = h('div', { style: S.empty }, 'LESSONS.md 里还没有可解析的条目。', h('br'), '条目格式：## [E-001] 标题');
+        } else {
+          var q = query.trim().toLowerCase();
+          var filtered = q
+            ? data.entries.filter(function (e) {
+                return [e.id, e.title, e.scene, e.bad, e.good, e.source]
+                  .some(function (v) { return v && String(v).toLowerCase().indexOf(q) >= 0; });
+              })
+            : data.entries;
+          var counts = { ban: 0, advice: 0 };
+          data.entries.forEach(function (e) { counts[levelOf(e)] += 1; });
+          body = filtered.length
+            ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
+                filtered.map(function (e) { return h(EntryCard, { key: e.id, entry: e }); }))
+            : h('div', { style: S.empty }, '没有匹配「' + query + '」的条目。');
+          body = [
+            h('div', { key: 'summary', style: S.sub }, '共 ' + data.entries.length + ' 条 · 🔴 禁令 ' + counts.ban + ' · 🟡 建议 ' + counts.advice),
+            body,
+          ];
+        }
+
+        return h('div', { style: S.wrap },
+          h('div', { style: S.header },
+            h('span', { style: { display: 'flex', alignItems: 'baseline', gap: '6px', minWidth: 0 } },
+              h('span', { style: S.title }, '📓 错题本'),
+              workspaceName(ctx) ? h('span', { style: S.sub }, '（' + workspaceName(ctx) + '）') : null),
+            h('button', { style: S.refresh, onClick: function () { setTick(function (t) { return t + 1; }); } }, '刷新')),
+          h('input', { style: S.search, placeholder: '搜索错题…', value: query, onChange: function (ev) { setQuery(ev.target.value); } }),
+          body);
+      };
+    }
+
+    // ---------- 插件入口 ----------
+    exports.inject = ['slots', 'sessions', 'remote', 'remote.workspaceFiles'];
+
+    exports.apply = function apply(ctx) {
+      // 侧边栏：会话切换时"注销再注入"，触发外壳重算面板清单，
+      // 让图标格里的工作区名保持新鲜。
+      var injectDisposer = null;
+      function refreshPanelEntry() {
+        if (injectDisposer) injectDisposer();
+        injectDisposer = ctx.slots.inject('sidebar.panellist', function () {
+          return ctx.slots.register({
+            name: 'sidebar.panellist',
+            id: PANEL_ID,
+            order: 60,
+            // 外壳标题置空：两行内容由图标格自绘（见 PanelIcon），避免与自绘内容重复
+            label: '',
+          }, PanelIcon(ctx));
+        });
+      }
+      refreshPanelEntry();
+      try {
+        ctx.sessions.list.subscribe(function () { refreshPanelEntry(); });
+      } catch (e) { /* 订阅失败则标签仅在刷新后更新 */ }
+      // 全局面板正文（root 作用域 main keyed slot）。
+      // 必须经 slots.inject 注册以获得渲染授权：直接 register 的条目不会进入
+      // 渲染器的 live 账本，选中面板后只会渲染 data-slot-error 死格。
+      ctx.slots.inject('main', function () {
+        return ctx.slots.register({
+          name: 'main',
+          key: PANEL_ID,
+          inject: function () { return {}; },
+        }, Panel(ctx));
+      });
+    };
+
+    return module.exports;
+  },
+});

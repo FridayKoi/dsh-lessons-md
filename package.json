@@ -1,0 +1,37 @@
+{
+  "name": "dsh-mistake-notebook",
+  "version": "0.1.0",
+  "description": "Mistake Notebook (LESSONS.md) visualizer panel for DeepSeek Harness Web UI — browse, search and review your AI mistake notebook entries by level and recurrence.",
+  "type": "module",
+  "main": "src/host.js",
+  "exports": {
+    ".": "./src/host.js",
+    "./client": "./src/client.js"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "cordis",
+    "mistake-notebook",
+    "lessons",
+    "agent-tool"
+  ],
+  "license": "MIT",
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-layout"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.0"
+  }
+}
