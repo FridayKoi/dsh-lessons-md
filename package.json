@@ -1,6 +1,6 @@
 {
   "name": "dsh-lessons-md",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "LESSONS.md (AI mistake notebook) visualizer panel for DeepSeek Harness Web UI — browse, search and review your AI mistake notebook entries by level and recurrence.",
   "type": "module",
   "main": "src/host.js",
