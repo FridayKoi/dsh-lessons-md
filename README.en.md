@@ -65,9 +65,9 @@ Two advanced fields (also parsed and rendered):
 
 **Human edits win**: deleting/editing via the panel IS a human edit and is respected by the recording rules.
 
-## Install (planned)
+## Install
 
-The plugin is not published to npm yet (source-only on GitHub). Once published:
+Published to npm — one command (requires DSH to have run once):
 
 ```bash
 dsh plugin --profile web add dsh-lessons-md

@@ -63,9 +63,9 @@ DSH 原生读取项目根目录的 `AGENTS.md`。**本插件已内置会话开�
 
 **人工编辑优先**：面板上的删除/编辑操作就是人工编辑，被 AI 记录规则尊重——AI 不会把人工删掉的条目原样重建（若再犯确需重建，须注明"曾于某日人工删除"，该约定由上游 lessons-md 仓库的 skill 负责）。
 
-## 安装（规划中）
+## 安装
 
-插件尚未发布到 npm，当前为本地开发状态。发布后将支持：
+已发布到 npm，一条命令安装（要求本机跑过一次 DSH）：
 
 ```bash
 dsh plugin --profile web add dsh-lessons-md
@@ -108,7 +108,8 @@ src/client.js  Client 入口：手写的惰性 CJS bundle（ModuleLoader 契约�
 - [x] v0.1：只读面板（分级渲染 / 搜索 / 统计）
 - [x] v0.2：Agent 工具（notebook_read / notebook_write / notebook_hit，含自动升级）
 - [x] v0.3：面板编辑（/lessons-add /lessons-edit /lessons-remove，Host 端直写）
-- [ ] npm 发布 + 截图 + 英文 README（其中 **npm 发布仍未完成**）
+- [x] npm 发布（[npmjs.com/package/dsh-lessons-md](https://www.npmjs.com/package/dsh-lessons-md)）+ 英文 README
+- [ ] 截图 / GIF 演示
 
 ## License
 
