@@ -1,4 +1,4 @@
-# dsh-mistake-notebook
+# dsh-lessons-md
 
 [错题本（Mistake Notebook）](https://github.com/FridayKoi/lessons-md) 的 **DeepSeek Harness (DSH) Web UI 可视化插件**：在 DSH 侧边栏里直接浏览、搜索当前工作区的 `LESSONS.md` 错题本，按等级（🔴 禁令 / 🟡 建议）分色显示、统计复发次数。
 
@@ -58,14 +58,14 @@ DSH 原生读取项目根目录的 `AGENTS.md`，**零配置**。最优用法是
 - `- 同族: E-XXX`：同根因、不同修法的关联条目；命中一条时应把整族都读一遍
 - `- 升级: YYYY-MM-DD 第3次复发，升级为禁令`：自动升级的留痕记录
 
-**人工编辑优先**：面板上的删除/编辑操作就是人工编辑，被 AI 记录规则尊重——AI 不会把人工删掉的条目原样重建（若再犯确需重建，须注明"曾于某日人工删除"，该约定由上游 mistake-notebook skill 负责）。
+**人工编辑优先**：面板上的删除/编辑操作就是人工编辑，被 AI 记录规则尊重——AI 不会把人工删掉的条目原样重建（若再犯确需重建，须注明"曾于某日人工删除"，该约定由上游 lessons-md 仓库的 skill 负责）。
 
 ## 安装（规划中）
 
 插件尚未发布到 npm，当前为本地开发状态。发布后将支持：
 
 ```bash
-dsh plugin --profile web add dsh-mistake-notebook
+dsh plugin --profile web add dsh-lessons-md
 ```
 
 ## 本地开发
@@ -74,7 +74,7 @@ dsh plugin --profile web add dsh-mistake-notebook
 
 ```powershell
 # 1. 把本包装进 web profile（模拟 dsh plugin add）
-New-Item -ItemType Junction -Path "$env:USERPROFILE\.dsh\profiles\node_modules\dsh-mistake-notebook" -Target "<本仓库路径>"
+New-Item -ItemType Junction -Path "$env:USERPROFILE\.dsh\profiles\node_modules\dsh-lessons-md" -Target "<本仓库路径>"
 # 2. 同时链接官方运行时包（供插件引用，免重复下载）
 New-Item -ItemType Junction -Path "<本仓库路径>\node_modules\@deepseek-ai" -Target "$env:USERPROFILE\.dsh\profiles\node_modules\@deepseek-ai"
 # 3. 挂载并启动
@@ -95,7 +95,7 @@ src/client.js  Client 入口：手写的惰性 CJS bundle（ModuleLoader 契约�
                └─ ctx.remote.workspaceFiles.readAll → 读 LESSONS.md
 ```
 
-- **只读解析**：按 mistake-notebook 条目格式解析 `## [E-XXX] 标题` 与 触发场景/❌/✅/复发/等级/来源 字段，解析失败时回退提示
+- **只读解析**：按 lessons-md 条目格式解析 `## [E-XXX] 标题` 与 触发场景/❌/✅/复发/等级/来源 字段，解析失败时回退提示
 - **面板编辑**：通过 DSH 的 commands 机制（`/lessons-add` `/lessons-edit` `/lessons-remove`）由 Host 端直接写盘，不经模型
 - **无需自有 RPC**：静态插件不能新增 Remote 命名空间，v1 复用 DSH 内置的 `workspaceFiles.read`，因此天然零密钥、零模型调用
 - 已知兼容性：基于 DSH 0.1.5-rc.1 开发，插槽 API 属快速迭代期，升级 DSH 后需回归验证

@@ -3,7 +3,7 @@
 // window.__ModuleLoader__.load({ id, factory(require) { ...; return module.exports } })
 // react / react/jsx-runtime 由平台冻结模块表提供，必须 external，不能打进来。
 window.__ModuleLoader__.load({
-  id: 'dsh-mistake-notebook',
+  id: 'dsh-lessons-md',
   factory: (require) => {
     var module = { exports: {} };
     var exports = module.exports;
@@ -12,8 +12,8 @@ window.__ModuleLoader__.load({
     var React = require('react');
     var h = React.createElement;
 
-    var PANEL_ID = 'mistake-notebook';
-    var NS = 'mistake-notebook';
+    var PANEL_ID = 'lessons-md';
+    var NS = 'lessons-md';
 
     // ---------- 多语言词典（zh / en 必须齐全）----------
     var DICT = {
@@ -33,7 +33,7 @@ window.__ModuleLoader__.load({
         noSession1: '还没有打开的会话。',
         noSession2: '错题本按会话所在工作区读取 LESSONS.md。',
         noFile1: '当前工作区没有找到 LESSONS.md。',
-        noFile2: '把 mistake-notebook 的模板复制到项目根目录即可开始记账。',
+        noFile2: '把 lessons-md 仓库的模板复制到项目根目录即可开始记账。',
         noEntries1: 'LESSONS.md 里还没有可解析的条目。',
         noEntries2: '条目格式：## [E-001] 标题',
         readError: '读取失败：',
@@ -103,7 +103,7 @@ window.__ModuleLoader__.load({
         noSession1: 'No open session.',
         noSession2: 'The notebook is read from the active session workspace.',
         noFile1: 'No LESSONS.md in this workspace.',
-        noFile2: 'Copy the mistake-notebook template into the project root to start.',
+        noFile2: 'Copy the lessons-md template into the project root to start.',
         noEntries1: 'No parsable entries in LESSONS.md yet.',
         noEntries2: 'Entry format: ## [E-001] Title',
         readError: 'Failed to read:',
@@ -112,7 +112,7 @@ window.__ModuleLoader__.load({
     };
 
     // ---------- LESSONS.md 解析 ----------
-    // 条目格式（mistake-notebook 项目约定）：
+    // 条目格式（lessons-md 项目约定）：
     // ## [E-001] 标题
     // - 触发场景: ...
     // - ❌ 错误做法: ...
@@ -655,7 +655,7 @@ window.__ModuleLoader__.load({
       // 注册词典并绑定翻译函数（随 DSH 设置里的语言切换自动生效）
       ctx.effect(function () {
         return ctx.locale.register(NS, DICT);
-      }, 'mistake-notebook: dictionary');
+      }, 'lessons-md: dictionary');
       var t = ctx.locale.bind(NS);
 
       // 侧边栏：会话切换时"注销再注入"，触发外壳重算面板清单，

@@ -7,7 +7,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-export const name = 'mistake-notebook'
+export const name = 'lessons-md'
 
 export const inject = ['tools', 'commands']
 
@@ -25,7 +25,7 @@ function today() {
 
 const SKELETON = `# 项目错题本 / Mistake Notebook
 
-> 本文件由 mistake-notebook 插件维护：AI 会通过 notebook_write 记录新错题（重复犯错用 notebook_hit 计数），
+> 本文件由 dsh-lessons-md 插件维护：AI 会通过 notebook_write 记录新错题（重复犯错用 notebook_hit 计数），
 > 人工可以直接编辑——人工编辑优先。条目格式约定见插件 README。
 
 ## 统计
@@ -215,7 +215,7 @@ export function apply(ctx) {
     },
   }))
 
-  console.log('[mistake-notebook] tools registered: notebook_read, notebook_write, notebook_hit')
+  console.log('[lessons-md] tools registered: notebook_read, notebook_write, notebook_hit')
 
   // ---------- 面板编辑命令（client 通过 commands remote 直接触发，不经模型）----------
   function commandError(action) {
@@ -224,7 +224,7 @@ export function apply(ctx) {
 
   ctx.commands.register({
     name: 'lessons-add',
-    description: 'mistake-notebook: 向当前工作区错题本添加一条错题（面板按钮调用）',
+    description: 'lessons-md: 向当前工作区错题本添加一条错题（面板按钮调用）',
     input: { hint: '<json>' },
     handler: ({ agent, rawInput }) => {
       try {
@@ -238,7 +238,7 @@ export function apply(ctx) {
 
   ctx.commands.register({
     name: 'lessons-edit',
-    description: 'mistake-notebook: 编辑当前工作区错题本的一条错题（面板按钮调用）',
+    description: 'lessons-md: 编辑当前工作区错题本的一条错题（面板按钮调用）',
     input: { hint: '<json>' },
     handler: ({ agent, rawInput }) => {
       try {
@@ -261,7 +261,7 @@ export function apply(ctx) {
 
   ctx.commands.register({
     name: 'lessons-remove',
-    description: 'mistake-notebook: 从当前工作区错题本删除一条错题（面板按钮调用）',
+    description: 'lessons-md: 从当前工作区错题本删除一条错题（面板按钮调用）',
     input: { hint: '<id>' },
     handler: ({ agent, rawInput }) => {
       try {
@@ -283,7 +283,7 @@ export function apply(ctx) {
 
   ctx.commands.register({
     name: 'lessons-init',
-    description: 'mistake-notebook: 在当前工作区初始化错题本（面板空态按钮调用）',
+    description: 'lessons-md: 在当前工作区初始化错题本（面板空态按钮调用）',
     handler: ({ agent }) => {
       try {
         const cwd = agent?.session?.header?.cwd || process.cwd()
@@ -295,5 +295,5 @@ export function apply(ctx) {
     },
   })
 
-  console.log('[mistake-notebook] commands registered: /lessons-add, /lessons-edit, /lessons-remove, /lessons-init')
+  console.log('[lessons-md] commands registered: /lessons-add, /lessons-edit, /lessons-remove, /lessons-init')
 }

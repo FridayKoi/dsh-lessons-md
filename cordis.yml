@@ -1,7 +1,7 @@
 # 开发期挂载配置：让 dsh 把本插件挂进插件树
 # 本包通过 junction 安装在 profile 的 node_modules 里（模拟 dsh plugin add）：
-#   ~/.dsh/profiles/node_modules/dsh-mistake-notebook -> D:/GitHub_ing/dshplugin
+#   ~/.dsh/profiles/node_modules/dsh-lessons-md -> D:/GitHub_ing/dshplugin
 # 用法：dsh web --patch D:/GitHub_ing/dshplugin/cordis.yml --port 3082
 - insert:
-  - id: mistake-notebook
-    name: dsh-mistake-notebook
+  - id: lessons-md
+    name: dsh-lessons-md
