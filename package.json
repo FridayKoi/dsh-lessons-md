@@ -24,7 +24,8 @@
   },
   "files": [
     "src",
-    "README.md"
+    "README.md",
+    "README.en.md"
   ],
   "dsh": {
     "client": {
