@@ -281,5 +281,19 @@ export function apply(ctx) {
     },
   })
 
-  console.log('[mistake-notebook] commands registered: /lessons-add, /lessons-edit, /lessons-remove')
+  ctx.commands.register({
+    name: 'lessons-init',
+    description: 'mistake-notebook: 在当前工作区初始化错题本（面板空态按钮调用）',
+    handler: ({ agent }) => {
+      try {
+        const cwd = agent?.session?.header?.cwd || process.cwd()
+        const file = join(cwd, 'LESSONS.md')
+        if (existsSync(file)) return { kind: 'error', text: `当前工作区已有错题本（${file}）` }
+        writeFileSync(file, SKELETON)
+        return { kind: 'success', text: `已创建错题本 ${file}` }
+      } catch (e) { return commandError('init')(e) }
+    },
+  })
+
+  console.log('[mistake-notebook] commands registered: /lessons-add, /lessons-edit, /lessons-remove, /lessons-init')
 }

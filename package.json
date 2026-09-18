@@ -18,6 +18,10 @@
     "agent-tool"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TODO-user/dsh-mistake-notebook.git"
+  },
   "files": [
     "src",
     "README.md"

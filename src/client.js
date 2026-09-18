@@ -56,6 +56,12 @@ window.__ModuleLoader__.load({
         needSession: '需要先打开一个会话才能操作错题本。',
         familyHint: '同根因关联条目，点击查看',
         familyLabel: '同族',
+        sortDefault: '按编号',
+        sortRecur: '按复发',
+        sortLevel: '禁令优先',
+        initBtn: '创建错题本',
+        expand: '展开',
+        collapse: '收起',
       },
       en: {
         title: 'Mistake Notebook',
@@ -82,6 +88,12 @@ window.__ModuleLoader__.load({
         needSession: 'Open a session first to manage the notebook.',
         familyHint: 'Same root cause; click to view',
         familyLabel: 'Related',
+        sortDefault: 'By id',
+        sortRecur: 'By recurrences',
+        sortLevel: 'Bans first',
+        initBtn: 'Create notebook',
+        expand: 'Expand',
+        collapse: 'Collapse',
         recurred: '{count} times ({dates})',
         sceneLabel: 'Scene',
         badLabel: 'What went wrong',
@@ -218,6 +230,9 @@ window.__ModuleLoader__.load({
       formBtns: { display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' },
       primaryBtn: { padding: '5px 16px', borderRadius: '6px', border: 'none', background: 'rgba(127,127,127,0.28)', color: 'inherit', cursor: 'pointer', fontWeight: 600, fontSize: '12.5px' },
       formErr: { fontSize: '12px', color: '#ff6369' },
+      sortSel: { padding: '4px 8px', borderRadius: '8px', border: '1px solid rgba(127,127,127,0.35)', background: 'transparent', color: 'inherit', fontSize: '12px', flexShrink: 0 },
+      chev: { background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.5, fontSize: '11px', padding: '0 2px', flexShrink: 0 },
+      scenePreview: { fontSize: '12.5px', opacity: 0.55, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
       glyphBlock: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', width: 'max-content', maxWidth: '150px', overflow: 'hidden' },
       glyphLine1: { fontSize: '14px', fontWeight: 500, lineHeight: '20px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
       glyphLine2: { fontSize: '11px', lineHeight: '14px', opacity: 0.6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' },
@@ -251,6 +266,7 @@ window.__ModuleLoader__.load({
     function EntryCard(props) {
       var e = props.entry;
       var t = props.t;
+      var expanded = props.expanded;
       var lv = levelOf(e);
       var chip = lv === 'ban'
         ? h('span', { style: Object.assign({}, S.chip, S.chipBan) }, '🔴 ' + t('levelBan'))
@@ -259,32 +275,50 @@ window.__ModuleLoader__.load({
       var delBtn = props.deleting
         ? h('button', { style: Object.assign({}, S.actBtn, S.actDanger), onClick: props.onConfirmDelete }, t('confirmDel'))
         : h('button', { style: S.actBtn, onClick: props.onDelete }, t('del'));
+      var body = null;
+      if (expanded) {
+        body = [
+          h(Field, { key: 'scene', label: t('sceneLabel'), value: e.scene }),
+          e.bad ? h('div', { key: 'bad', style: Object.assign({}, S.fixRow, S.fixBad) },
+            h('span', { style: Object.assign({}, S.fixMark, S.fixBadMark) }, '✗'),
+            h('span', { style: { opacity: 0.5, flexShrink: 0 } }, t('badLabel')),
+            h('span', null, e.bad)) : null,
+          e.good ? h('div', { key: 'good', style: Object.assign({}, S.fixRow, S.fixGood) },
+            h('span', { style: Object.assign({}, S.fixMark, S.fixGoodMark) }, '✓'),
+            h('span', { style: { opacity: 0.5, flexShrink: 0 } }, t('goodLabel')),
+            h('span', null, e.good)) : null,
+          e.related ? h('div', { key: 'related', style: S.familyRow },
+            h('span', { style: { opacity: 0.5, flexShrink: 0, fontSize: '11px' } }, '⧉ ' + t('familyLabel')),
+            String(e.related).split(/[,，\s]+/).filter(Boolean).map(function (rid) {
+              return h('button', { key: rid, style: S.familyChip, title: t('familyHint'), onClick: function () { props.onFind(rid.trim()); } }, '⧉ ' + rid.trim());
+            })) : null,
+          e.source ? h('div', { key: 'source', style: S.source }, t('sourceLabel') + ' · ' + e.source
+            + (e.upgraded ? ' · ⬆ ' + e.upgraded : '')) : null,
+          h('div', { key: 'actions', style: S.cardActions },
+            h('button', { style: S.actBtn, onClick: props.onEdit }, t('edit')),
+            delBtn),
+        ];
+      } else {
+        body = [
+          e.scene ? h('div', { key: 'preview', style: S.scenePreview }, e.scene) : null,
+          h('div', { key: 'actions', style: S.cardActions },
+            h('button', { style: S.actBtn, onClick: props.onEdit }, t('edit')),
+            delBtn),
+        ];
+      }
       return h('div', { style: Object.assign({}, S.card, S[lv === 'ban' ? 'cardBan' : 'cardAdvice']) },
         h('div', { style: S.cardHead },
+          h('button', {
+            style: S.chev,
+            title: expanded ? t('collapse') : t('expand'),
+            onClick: props.onToggle,
+          }, expanded ? '▾' : '▸'),
           h('span', { style: S.cardId }, e.id),
           h('span', { style: S.cardTitle }, e.title),
           h('span', { style: S.headSpacer }),
           recurText ? h('span', { style: S.recur }, '· ' + recurText) : null,
           chip),
-        h(Field, { label: t('sceneLabel'), value: e.scene }),
-        e.bad ? h('div', { style: Object.assign({}, S.fixRow, S.fixBad) },
-          h('span', { style: Object.assign({}, S.fixMark, S.fixBadMark) }, '✗'),
-          h('span', { style: { opacity: 0.5, flexShrink: 0 } }, t('badLabel')),
-          h('span', null, e.bad)) : null,
-        e.good ? h('div', { style: Object.assign({}, S.fixRow, S.fixGood) },
-          h('span', { style: Object.assign({}, S.fixMark, S.fixGoodMark) }, '✓'),
-          h('span', { style: { opacity: 0.5, flexShrink: 0 } }, t('goodLabel')),
-          h('span', null, e.good)) : null,
-        e.related ? h('div', { style: S.familyRow },
-          h('span', { style: { opacity: 0.5, flexShrink: 0, fontSize: '11px' } }, '⧉ 同族'),
-          String(e.related).split(/[,，\s]+/).filter(Boolean).map(function (rid) {
-            return h('button', { key: rid, style: S.familyChip, title: t('familyHint'), onClick: function () { props.onFind(rid.trim()); } }, '⧉ ' + rid.trim());
-          })) : null,
-        e.source ? h('div', { style: S.source }, t('sourceLabel') + ' · ' + e.source
-          + (e.upgraded ? ' · ⬆ ' + e.upgraded : '')) : null,
-        h('div', { style: S.cardActions },
-          h('button', { style: S.actBtn, onClick: props.onEdit }, t('edit')),
-          delBtn));
+        body);
     }
 
     // 添加/编辑表单弹层：mode 'add' | 'edit'；entry 为编辑目标。
@@ -363,6 +397,10 @@ window.__ModuleLoader__.load({
         var tick = tickState[0], setTick = tickState[1];
         var filterState = React.useState('all');
         var filter = filterState[0], setFilter = filterState[1];
+        var sortState = React.useState('id');
+        var sortBy = sortState[0], setSortBy = sortState[1];
+        var expState = React.useState({});
+        var expandedMap = expState[0], setExpandedMap = expState[1];
         var formState = React.useState(null);
         var form = formState[0], setForm = formState[1];
         var deletingState = React.useState(null);
@@ -408,39 +446,85 @@ window.__ModuleLoader__.load({
 
         React.useEffect(function () {
           var alive = true;
-          function load() {
-            var current = null;
-            try {
-              var list = ctx.sessions && ctx.sessions.list;
-              current = list ? list.getSnapshot().current : null;
-            } catch (e) { /* sessions 服务尚不可用 */ }
-            if (!current) {
-              if (alive) setData({ status: 'no-session', entries: [], detail: null, sessionId: null });
-              return;
-            }
+          var watchAbort = null;
+          var watchedSession = null;
+          var lastText = null;
+
+          function applyText(text, sessionId) {
+            if (text === lastText) return;
+            lastText = text;
+            var entries = parseLessons(text);
+            setData({ status: entries.length ? 'ok' : 'no-entries', entries: entries, detail: null, sessionId: sessionId });
+          }
+
+          function readNow(sessionId) {
             var wf = ctx.remote && ctx.remote.workspaceFiles;
             if (!wf) {
-              if (alive) setData({ status: 'read-error', entries: [], detail: 'remote.workspaceFiles 服务不可用', sessionId: current });
+              if (alive) setData({ status: 'read-error', entries: [], detail: 'remote.workspaceFiles 服务不可用', sessionId: sessionId });
               return;
             }
-            wf.readAll(current, 'LESSONS.md').then(function (res) {
+            wf.readAll(sessionId, 'LESSONS.md').then(function (res) {
               if (!alive) return;
               if (res && res.ok) {
-                var text = decodeBase64Utf8(res.value.data);
-                var entries = parseLessons(text);
-                setData({ status: entries.length ? 'ok' : 'no-entries', entries: entries, detail: null, sessionId: current });
+                applyText(decodeBase64Utf8(res.value.data), sessionId);
               } else {
                 var code = res && res.error ? res.error.code : 'unknown';
                 var msg = res && res.error ? res.error.message : '';
                 setData({
                   status: code === 'NOT_FOUND' || /not[-\s]?found|ENOENT|no such/i.test(String(msg) + code) ? 'no-file' : 'read-error',
-                  entries: [], detail: code + ' ' + msg, sessionId: current,
+                  entries: [], detail: code + ' ' + msg, sessionId: sessionId,
                 });
               }
             }).catch(function (err) {
-              if (alive) setData({ status: 'read-error', entries: [], detail: String(err), sessionId: current });
+              if (alive) setData({ status: 'read-error', entries: [], detail: String(err), sessionId: sessionId });
             });
           }
+
+          function currentSession() {
+            try {
+              var list = ctx.sessions && ctx.sessions.list;
+              return list ? list.getSnapshot().current : null;
+            } catch (e) { return null; }
+          }
+
+          // 优先走官方 changes 流；同时以低频轮询兜底（小文件，开销可忽略）
+          function watch(sessionId) {
+            try {
+              var wfWatch = ctx.remote && ctx.remote.workspaceFiles;
+              if (wfWatch && wfWatch.changes) {
+                var signal = watchAbort.signal;
+                var iterator = wfWatch.changes(sessionId, signal);
+                (async function () {
+                  try {
+                    for await (var frame of iterator) {
+                      if (!alive) break;
+                      if (!frame || frame.kind !== 'change') continue;
+                      var p = String((frame.change && frame.change.absolutePath) || '');
+                      if (p.toLowerCase().indexOf('lessons.md') < 0) continue;
+                      readNow(sessionId);
+                    }
+                  } catch (e) { /* 流随会话切换/取消而结束 */ }
+                })();
+              }
+            } catch (e) { /* 订阅失败则仅靠轮询 */ }
+          }
+
+          function load() {
+            var current = currentSession();
+            if (!current) {
+              if (alive) setData({ status: 'no-session', entries: [], detail: null, sessionId: null });
+              return;
+            }
+            if (current !== watchedSession) {
+              watchedSession = current;
+              lastText = null;
+              if (watchAbort) watchAbort.abort();
+              watchAbort = new AbortController();
+              watch(current);
+            }
+            readNow(current);
+          }
+
           try { load(); } catch (e) {
             if (alive) setData({ status: 'read-error', entries: [], detail: String(e), sessionId: null });
           }
@@ -448,7 +532,17 @@ window.__ModuleLoader__.load({
           try {
             unsubscribe = ctx.sessions.list.subscribe(load);
           } catch (e) { /* 订阅失败则仅手动刷新 */ }
-          return function () { alive = false; if (unsubscribe) unsubscribe(); };
+          var poll = setInterval(function () {
+            if (!alive) { clearInterval(poll); return; }
+            var cur = currentSession();
+            if (cur) readNow(cur);
+          }, 4000);
+          return function () {
+            alive = false;
+            clearInterval(poll);
+            if (unsubscribe) unsubscribe();
+            if (watchAbort) watchAbort.abort();
+          };
         }, [tick]);
 
         var body;
@@ -457,7 +551,15 @@ window.__ModuleLoader__.load({
         } else if (data.status === 'no-session') {
           body = h('div', { style: S.empty }, t('noSession1'), h('br'), t('noSession2'));
         } else if (data.status === 'no-file') {
-          body = h('div', { style: S.empty }, t('noFile1'), h('br'), t('noFile2'));
+          body = h('div', { style: S.empty },
+            t('noFile1'), h('br'), t('noFile2'),
+            h('div', { style: { marginTop: '14px' } },
+              h('button', {
+                style: S.primaryBtn,
+                onClick: function () {
+                  runCommand('/lessons-init').then(function (res) { if (res && res.ok) afterChange(); });
+                },
+              }, '📓 ' + t('initBtn'))));
         } else if (data.status === 'read-error') {
           body = h('div', { style: S.empty }, t('readError'), h('br'), String(data.detail || ''));
         } else if (data.status === 'no-entries') {
@@ -480,12 +582,33 @@ window.__ModuleLoader__.load({
           var filterRow = h('div', { style: S.filterRow },
             fchip('all', t('filterAll') + ' ' + data.entries.length),
             fchip('ban', '🔴 ' + t('levelBan') + ' ' + counts.ban, S.fchipBanOn),
-            fchip('advice', '🟡 ' + t('levelAdvice') + ' ' + counts.advice, S.fchipAdviceOn));
-          body = filtered.length
+            fchip('advice', '🟡 ' + t('levelAdvice') + ' ' + counts.advice, S.fchipAdviceOn),
+            h('span', { style: S.headSpacer }),
+            h('select', {
+              style: S.sortSel,
+              value: sortBy,
+              onChange: function (ev) { setSortBy(ev.target.value); },
+            },
+              h('option', { value: 'id' }, t('sortDefault')),
+              h('option', { value: 'recurrence' }, t('sortRecur')),
+              h('option', { value: 'level' }, t('sortLevel'))));
+          var recurOf = function (e) { var m = String(e.recur || '').match(/\d+/); return m ? parseInt(m[0], 10) : 0; };
+          var sorted = filtered.slice().sort(function (a, b) {
+            if (sortBy === 'recurrence') return recurOf(b) - recurOf(a);
+            if (sortBy === 'level') {
+              var la = levelOf(a) === 'ban' ? 0 : 1;
+              var lb = levelOf(b) === 'ban' ? 0 : 1;
+              return la - lb || recurOf(b) - recurOf(a);
+            }
+            return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+          });
+          body = sorted.length
             ? h('div', { style: S.list },
-                filtered.map(function (e) {
+                sorted.map(function (e) {
                   return h(EntryCard, {
                     key: e.id, entry: e, t: t,
+                    expanded: !!query.trim() || !!expandedMap[e.id],
+                    onToggle: function () { setExpandedMap(function (prev) { var o = Object.assign({}, prev); if (o[e.id]) delete o[e.id]; else o[e.id] = true; return o; }); },
                     onFind: function (rid) { setQuery(rid); setFilter('all'); },
                     onEdit: function () { setForm({ mode: 'edit', entry: e }); },
                     onDelete: function () { setDeleting(e.id); },
