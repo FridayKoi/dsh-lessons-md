@@ -1,5 +1,7 @@
 # dsh-lessons-md
 
+[中文](README.md) | [English](README.en.md)
+
 [错题本（Mistake Notebook）](https://github.com/FridayKoi/lessons-md) 的 **DeepSeek Harness (DSH) Web UI 可视化插件**：在 DSH 侧边栏里直接浏览、搜索当前工作区的 `LESSONS.md` 错题本，按等级（🔴 禁令 / 🟡 建议）分色显示、统计复发次数。
 
 一个 AI 反复犯的错，值得一眼看清。
