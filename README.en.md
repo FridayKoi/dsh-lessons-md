@@ -15,6 +15,7 @@
 - 🏷️ **Level filter & sorting**: counter chips (all / ban / advice) + sort by id, recurrences or bans
 - 🔄 **Live refresh**: external edits to `LESSONS.md` appear within seconds (file-change stream + poll fallback)
 - 🤖 **Agent tools**: three model-invocable tools so the DSH agent maintains its own notebook
+- ⚡ **Session opener**: automatically injects a "read the notebook first" convention into every session's system prompt — zero config, works out of the box
 - 🌐 **Bilingual**: every UI string follows the DSH language setting (中文 / English), no reload needed
 
 ### Agent tools
@@ -29,7 +30,7 @@ Together they close the loop: the agent gets corrected → `notebook_write` reco
 
 ## Wiring with AGENTS.md (recommended combo)
 
-DSH reads the project-root `AGENTS.md` natively, **zero config**. The two are complementary:
+DSH reads the project-root `AGENTS.md` natively. **This plugin already injects a session opener itself** (via DSH's system-prompt mechanism, active on install), so the AGENTS.md wiring is an optional reinforcement — the two are complementary:
 
 - `AGENTS.md` makes the agent *read the notebook every session* (habit layer)
 - This plugin provides *visualization + agent tools + panel management* (tool layer)

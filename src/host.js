@@ -9,7 +9,7 @@ import { join } from 'node:path'
 
 export const name = 'lessons-md'
 
-export const inject = ['tools', 'commands']
+export const inject = ['tools', 'commands', 'systemPrompt']
 
 // ---------- 基础工具函数 ----------
 
@@ -296,4 +296,18 @@ export function apply(ctx) {
   })
 
   console.log('[lessons-md] commands registered: /lessons-add, /lessons-edit, /lessons-remove, /lessons-init')
+
+  // ---------- 系统提示注入：会话开场自动提醒（零配置核心）----------
+  // 静态文本（不随条目数变化）以保护提示词 KV cache；
+  // 让模型自己调 notebook_read 并报数，而不是把错题本内容塞进系统提示。
+  try {
+    ctx.systemPrompt.section({
+      name: 'lessons-md:session-reminder',
+      order: 9500,
+      text: 'Mistake Notebook (lessons-md) is active for this workspace. Before starting any task, call the notebook_read tool to load the workspace LESSONS.md and reply one line "Notebook read (N entries)" as confirmation. When an operation matches an entry\u2019s trigger scene, re-read it first; entries marked \uD83D\uDD34 Ban are unconditional \u2014 stop and explain before violating one. After a user correction or a repeated failure, call notebook_write (new entry, dedupe first) or notebook_hit (recurrence +1) to keep the notebook current.',
+    })
+    console.log('[lessons-md] system prompt section registered: lessons-md:session-reminder')
+  } catch (e) {
+    console.log('[lessons-md] system prompt injection unavailable: ' + String(e).slice(0, 120))
+  }
 }
