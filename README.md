@@ -1,6 +1,6 @@
 # dsh-mistake-notebook
 
-[错题本（Mistake Notebook）](https://github.com/) 的 **DeepSeek Harness (DSH) Web UI 可视化插件**：在 DSH 侧边栏里直接浏览、搜索当前工作区的 `LESSONS.md` 错题本，按等级（🔴 禁令 / 🟡 建议）分色显示、统计复发次数。
+[错题本（Mistake Notebook）](https://github.com/FridayKoi/lessons-md) 的 **DeepSeek Harness (DSH) Web UI 可视化插件**：在 DSH 侧边栏里直接浏览、搜索当前工作区的 `LESSONS.md` 错题本，按等级（🔴 禁令 / 🟡 建议）分色显示、统计复发次数。
 
 一个 AI 反复犯的错，值得一眼看清。
 
@@ -40,7 +40,7 @@ DSH 原生读取项目根目录的 `AGENTS.md`，**零配置**。最优用法是
 - 踩坑提炼一律写入项目根目录的 LESSONS.md（按其条目格式，含复发日期）；不要写入自动记忆等其他文件
 ```
 
-> 完整的跨工具安装指南（三档模式：被动 / 半自动 / 全自动）见上游仓库 `docs/INSTALL.md`（占位：https://github.com/TODO-mistake-notebook-upstream）。
+> 完整的跨工具安装指南（三档模式：被动 / 半自动 / 全自动）见上游仓库 [FridayKoi/lessons-md](https://github.com/FridayKoi/lessons-md) 的 `docs/INSTALL.md`。
 
 ## 条目格式约定
 
